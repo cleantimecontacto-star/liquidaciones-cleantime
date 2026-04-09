@@ -413,7 +413,7 @@
         </div>
         <div class="form-group">
           <label>Días Ausente</label>
-          <input type="number" id="inp-ausencias" value="0" min="0" max="22" />
+          <input type="number" id="inp-ausencias" value="0" min="0" max="30" />
         </div>
       </div>
       <div id="nota-marzo" class="nota-marzo" style="display:none"></div>
@@ -577,7 +577,8 @@ const EMPRESA = {
   mutual: "ACHS"
 };
 
-const DIAS_HABILES_MES = 22;
+// Base legal/convencional Chile: mes de 30 días para prorrateo
+const DIAS_BASE_MES = 30;
 const UF_2026 = 38000;
 
 // Tasas previsionales trabajador (% sobre imponible)
@@ -640,6 +641,18 @@ function setHistorial(arr) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// IDS ÚNICOS (evitar mezcla de datos)
+// ═══════════════════════════════════════════════════════════
+function newId(prefix) {
+  const p = prefix ? `${prefix}_` : '';
+  if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+    return p + window.crypto.randomUUID();
+  }
+  // Fallback (muy baja probabilidad de colisión)
+  return p + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+}
+
+// ═══════════════════════════════════════════════════════════
 // NAVEGACIÓN TABS
 // ═══════════════════════════════════════════════════════════
 function showTab(tab) {
@@ -683,13 +696,15 @@ function checkNotaMarzo() {
   if (!w || !w.ingreso) { nota.style.display = 'none'; return; }
   const fi = new Date(w.ingreso + 'T12:00:00');
   if (fi.getFullYear() === anio && (fi.getMonth() + 1) === mes && fi.getDate() > 1) {
+    // Primer mes: se cuentan días calendario desde ingreso (inclusive),
+    // prorrateando siempre sobre base 30 (Chile).
     const diasCalendario = new Date(anio, mes, 0).getDate();
-    const diasDesdeIngreso = diasCalendario - fi.getDate() + 1;
-    const diasHabiles = Math.round((diasDesdeIngreso / diasCalendario) * DIAS_HABILES_MES);
+    const diasCalendarioDesdeIngreso = Math.max(0, (diasCalendario - fi.getDate()) + 1);
+    const diasBaseDesdeIngreso = Math.min(DIAS_BASE_MES, diasCalendarioDesdeIngreso);
     const nombresMes = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     const fechaFmt = fi.toLocaleDateString('es-CL');
     nota.style.display = 'block';
-    nota.innerHTML = `⚠️ <strong>Primer mes — ${nombresMes[mes]} ${anio}:</strong> ${w.nombre} ingresó el ${fechaFmt} → se calculan <strong>${diasHabiles} días hábiles</strong> de ${DIAS_HABILES_MES} posibles.`;
+    nota.innerHTML = `⚠️ <strong>Primer mes — ${nombresMes[mes]} ${anio}:</strong> ${w.nombre} ingresó el ${fechaFmt} → se calculan <strong>${diasBaseDesdeIngreso} días</strong> de ${DIAS_BASE_MES} (base 30).`;
   } else {
     nota.style.display = 'none';
   }
@@ -708,24 +723,25 @@ function calcular() {
   const ausencias = parseInt(document.getElementById('inp-ausencias').value) || 0;
 
   // Días trabajados
-  let diasTrabajados = DIAS_HABILES_MES - ausencias;
+  let diasTrabajados = DIAS_BASE_MES - ausencias;
   let esMarzoIngreso = false;
 
   // Caso especial: primer mes (ingreso en el mes)
   if (w.ingreso) {
     const fi = new Date(w.ingreso + 'T12:00:00');
     if (fi.getFullYear() === anio && (fi.getMonth() + 1) === mes && fi.getDate() > 1) {
-      // Ingresó en el mes: calcular días hábiles desde ingreso
-      // Usamos cálculo simplificado: (días calendario restantes / días totales) * 22
+      // Ingresó en el mes: contar días calendario desde ingreso (inclusive),
+      // y prorratear siempre sobre base 30 (Chile).
+      // Ej: Marzo (31 días), ingreso día 13 => 19 días calendario => 19/30 del sueldo.
       const diasCalendario = new Date(anio, mes, 0).getDate();
-      const diasDesdeIngreso = diasCalendario - fi.getDate() + 1;
-      diasTrabajados = Math.round((diasDesdeIngreso / diasCalendario) * DIAS_HABILES_MES) - ausencias;
+      const diasCalendarioDesdeIngreso = Math.max(0, (diasCalendario - fi.getDate()) + 1);
+      diasTrabajados = Math.min(DIAS_BASE_MES, diasCalendarioDesdeIngreso) - ausencias;
       esMarzoIngreso = true;
     }
   }
 
   diasTrabajados = Math.max(0, diasTrabajados);
-  const proporcion = diasTrabajados / DIAS_HABILES_MES;
+  const proporcion = diasTrabajados / DIAS_BASE_MES;
 
   // AFP y salud del trabajador
   const [afpNombre, afpTasa] = w.afp.split(':');
@@ -776,7 +792,7 @@ function calcular() {
     `${w.nombre} — ${w.cargo}`;
 
   document.getElementById('res-haberes').innerHTML = `
-    <div class="linea-item"><span class="concepto">Sueldo Base (${diasTrabajados}/${DIAS_HABILES_MES} días)</span><span class="monto haber">${fmt(sueldoBase)}</span></div>
+    <div class="linea-item"><span class="concepto">Sueldo Base (${diasTrabajados}/${DIAS_BASE_MES} días)</span><span class="monto haber">${fmt(sueldoBase)}</span></div>
     <div class="linea-item"><span class="concepto">Colación (no imponible)</span><span class="monto haber">${fmt(colacion)}</span></div>
     <div class="linea-item"><span class="concepto">Movilización (no imponible)</span><span class="monto haber">${fmt(movilizacion)}</span></div>
     <div class="linea-item" style="font-weight:700"><span class="concepto">Total Haberes</span><span class="monto">${fmt(totalHaberes)}</span></div>
@@ -873,10 +889,14 @@ function calcularPatronal() {
 // ═══════════════════════════════════════════════════════════
 // GENERAR PDF
 // ═══════════════════════════════════════════════════════════
-function generarPDF(liqData) {
-  const d = liqData || window._ultimaLiquidacion;
-  if (!d) return alert('Primero calcula una liquidación');
+function getPdfFileName(d) {
+  const meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio',
+    'Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const firstName = (d.worker?.nombre || 'Trabajador').split(' ')[0];
+  return `Liquidacion_${firstName}_${meses[d.mes]}${d.anio}.pdf`;
+}
 
+function buildPdfDoc(d) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
 
@@ -918,7 +938,7 @@ function generarPDF(liqData) {
   doc.text(`Nombre: ${d.worker.nombre}`, 18, y + 12);
   doc.text(`RUT: ${d.worker.rut}`, 18, y + 18);
   doc.text(`Cargo: ${d.worker.cargo}`, 18, y + 24);
-  doc.text(`Días trabajados: ${d.diasTrabajados} de ${DIAS_HABILES_MES}`, 120, y + 12);
+  doc.text(`Días trabajados: ${d.diasTrabajados} de ${DIAS_BASE_MES}`, 120, y + 12);
   doc.text(`AFP: ${d.afpNombre}  |  Salud: ${d.saludNombre}`, 120, y + 18);
   if (d.ausencias > 0) doc.text(`Ausencias: ${d.ausencias} días`, 120, y + 24);
 
@@ -959,7 +979,7 @@ function generarPDF(liqData) {
   };
 
   seccion('HABERES');
-  fila(`Sueldo Base (${d.diasTrabajados}/${DIAS_HABILES_MES} días)`, fmt(d.sueldoBase));
+  fila(`Sueldo Base (${d.diasTrabajados}/${DIAS_BASE_MES} días)`, fmt(d.sueldoBase));
   fila('Colación (no imponible)', fmt(d.colacion));
   fila('Movilización (no imponible)', fmt(d.movilizacion));
   fila('Total Haberes', fmt(d.totalHaberes), false, true);
@@ -997,8 +1017,21 @@ function generarPDF(liqData) {
   doc.setFont('helvetica', 'normal');
   doc.text(`Generado el ${new Date().toLocaleDateString('es-CL')} — Cleantime SpA`, 108, y, { align: 'center' });
 
-  const fileName = `Liquidacion_${d.worker.nombre.split(' ')[0]}_${meses[d.mes]}${d.anio}.pdf`;
-  doc.save(fileName);
+  return doc;
+}
+
+function generarPDF(liqData) {
+  const d = liqData || window._ultimaLiquidacion;
+  if (!d) return alert('Primero calcula una liquidación');
+  const doc = buildPdfDoc(d);
+  doc.save(getPdfFileName(d));
+}
+
+function generarPDFDataUri(liqData) {
+  const d = liqData || window._ultimaLiquidacion;
+  if (!d) throw new Error('No hay liquidación para PDF');
+  const doc = buildPdfDoc(d);
+  return doc.output('datauristring');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1010,8 +1043,19 @@ function guardarLiquidacion() {
   const hist = getHistorial();
   const meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio',
     'Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const id = Date.now().toString();
-  hist.unshift({ id, ...d, fechaGuardado: new Date().toISOString() });
+  const id = newId('liq');
+  // Guardamos snapshot del trabajador para que el historial no cambie si luego editan al trabajador
+  const workerSnapshot = d.worker ? { ...d.worker } : null;
+  const entry = { id, ...d, worker: workerSnapshot, workerId: d.worker?.id, fechaGuardado: new Date().toISOString() };
+  // Intento de guardar PDF en historial (si el almacenamiento lo permite)
+  try {
+    entry.pdfFileName = getPdfFileName(entry);
+    entry.pdfDataUri = generarPDFDataUri(entry);
+    entry.pdfGuardado = true;
+  } catch (e) {
+    entry.pdfGuardado = false;
+  }
+  hist.unshift(entry);
   setHistorial(hist);
   alert(`✅ Liquidación ${meses[d.mes]} ${d.anio} guardada correctamente`);
 }
@@ -1077,7 +1121,17 @@ function verLiquidacion(id) {
 
 function reGenerarPDF(id) {
   const h = getHistorial().find(x => x.id === id);
-  if (h) generarPDF(h);
+  if (!h) return;
+  if (h.pdfDataUri && h.pdfFileName) {
+    const a = document.createElement('a');
+    a.href = h.pdfDataUri;
+    a.download = h.pdfFileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return;
+  }
+  generarPDF(h);
 }
 
 function eliminarHistorial(id) {
@@ -1154,7 +1208,7 @@ function guardarTrabajador() {
     const idx = workers.findIndex(w => w.id === wid);
     if (idx >= 0) workers[idx] = { ...workers[idx], nombre, rut, cargo, ingreso, sueldo, colacion, movilizacion, afp, salud };
   } else {
-    workers.push({ id: Date.now().toString(), nombre, rut, cargo, ingreso, sueldo, colacion, movilizacion, afp, salud });
+    workers.push({ id: newId('w'), nombre, rut, cargo, ingreso, sueldo, colacion, movilizacion, afp, salud });
   }
   setTrabajadores(workers);
   cerrarModal('modal-trabajador');
