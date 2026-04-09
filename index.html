@@ -980,6 +980,8 @@ function calcularPatronal() {
   const base = Math.round(w.sueldo * proporcion); // remuneración imponible del mes
   const [afpNombre, afpTasa] = w.afp.split(':');
   const [saludNombre, saludTasa] = w.salud.split(':');
+  const mesesNombre = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const mesLabel = `${mesesNombre[mes] || mes}/${anio}`;
 
   // Montos "según Previred" (pagados a instituciones, sobre imponible)
   const afpOblig = Math.round(base * parseFloat(afpTasa) / 100);
@@ -996,7 +998,7 @@ function calcularPatronal() {
 
   document.getElementById('gastos-patronales-body').innerHTML = `
     <p style="font-size:0.8rem;color:#778;margin-bottom:10px;">
-      Período: ${mes}/${anio} · Días: ${diasTrabajados}/${DIAS_BASE_MES} · Imponible: ${fmt(base)}
+      Período: <strong>${mesLabel}</strong> · Días: ${diasTrabajados}/${DIAS_BASE_MES} · Imponible: ${fmt(base)}
     </p>
     <div class="gasto-row"><span>${afpNombre} (Cotización obligatoria ${afpTasa}%)</span><span style="font-weight:600;">${fmt(afpOblig)}</span></div>
     <div class="gasto-row"><span>${saludNombre} (Cotización salud ${saludTasa}%)</span><span style="font-weight:600;">${fmt(saludCot)}</span></div>
