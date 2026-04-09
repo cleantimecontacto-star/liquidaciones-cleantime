@@ -58,6 +58,9 @@
       gap: 8px;
       padding: 14px 16px;
       background: var(--azul);
+      position: sticky;
+      top: 64px;
+      z-index: 99;
     }
     .tab-btn {
       padding: 8px 20px;
@@ -134,6 +137,16 @@
       background: #fafbfc;
       transition: border-color 0.2s;
       -webkit-appearance: none;
+    }
+    /* Indicador visual de desplegable en selects */
+    select {
+      padding-right: 36px;
+      background-image: linear-gradient(45deg, transparent 50%, #667 50%),
+                        linear-gradient(135deg, #667 50%, transparent 50%);
+      background-position: calc(100% - 18px) calc(50% - 2px),
+                           calc(100% - 12px) calc(50% - 2px);
+      background-size: 6px 6px, 6px 6px;
+      background-repeat: no-repeat;
     }
     input:focus, select:focus {
       outline: none;
@@ -470,6 +483,27 @@
       <div class="alert alert-info">
         Estos costos son pagados por la empresa y NO se descuentan del trabajador.
       </div>
+      <div class="form-grid cols-3" style="margin-bottom:14px;">
+        <div class="form-group">
+          <label>Mes</label>
+          <select id="inp-mes-patronal" onchange="syncPeriodoFromPatronal(); calcularPatronal();">
+            <option value="1">Enero</option><option value="2">Febrero</option>
+            <option value="3">Marzo</option><option value="4">Abril</option>
+            <option value="5">Mayo</option><option value="6">Junio</option>
+            <option value="7">Julio</option><option value="8">Agosto</option>
+            <option value="9">Septiembre</option><option value="10">Octubre</option>
+            <option value="11">Noviembre</option><option value="12">Diciembre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Año</label>
+          <input type="number" id="inp-anio-patronal" value="2026" min="2020" max="2030" oninput="syncPeriodoFromPatronal(); calcularPatronal();" />
+        </div>
+        <div class="form-group">
+          <label>Días Ausente</label>
+          <input type="number" id="inp-ausencias-patronal" value="0" min="0" max="30" oninput="syncPeriodoFromPatronal(); calcularPatronal();" />
+        </div>
+      </div>
       <div class="form-group" style="margin-bottom:14px;">
         <label>Trabajador</label>
         <select id="sel-trabajador-patronal" onchange="calcularPatronal()">
@@ -692,6 +726,25 @@ function normalizeIngresoString(ingresoStr) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+function syncPeriodoToPatronal() {
+  const mes = document.getElementById('inp-mes')?.value;
+  const anio = document.getElementById('inp-anio')?.value;
+  const aus = document.getElementById('inp-ausencias')?.value;
+  if (mes && document.getElementById('inp-mes-patronal')) document.getElementById('inp-mes-patronal').value = mes;
+  if (anio && document.getElementById('inp-anio-patronal')) document.getElementById('inp-anio-patronal').value = anio;
+  if (aus != null && document.getElementById('inp-ausencias-patronal')) document.getElementById('inp-ausencias-patronal').value = aus;
+}
+
+function syncPeriodoFromPatronal() {
+  const mes = document.getElementById('inp-mes-patronal')?.value;
+  const anio = document.getElementById('inp-anio-patronal')?.value;
+  const aus = document.getElementById('inp-ausencias-patronal')?.value;
+  if (mes && document.getElementById('inp-mes')) document.getElementById('inp-mes').value = mes;
+  if (anio && document.getElementById('inp-anio')) document.getElementById('inp-anio').value = anio;
+  if (aus != null && document.getElementById('inp-ausencias')) document.getElementById('inp-ausencias').value = aus;
+  checkNotaMarzo();
+}
+
 // ═══════════════════════════════════════════════════════════
 // NAVEGACIÓN TABS
 // ═══════════════════════════════════════════════════════════
@@ -702,7 +755,7 @@ function showTab(tab) {
   event.currentTarget.classList.add('active');
   if (tab === 'historial') renderHistorial();
   if (tab === 'trabajadores') renderTrabajadores();
-  if (tab === 'patronal') { poblarSelectsTrabajadores(); calcularPatronal(); }
+  if (tab === 'patronal') { poblarSelectsTrabajadores(); syncPeriodoToPatronal(); calcularPatronal(); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -917,10 +970,10 @@ function calcularPatronal() {
   const w = getWorkerById(wid);
   if (!w) return;
 
-  // Usar el mismo periodo/asistencia que Liquidación (base 30)
-  const mes = parseInt(document.getElementById('inp-mes')?.value || (new Date().getMonth() + 1));
-  const anio = parseInt(document.getElementById('inp-anio')?.value || (new Date().getFullYear()));
-  const ausencias = parseInt(document.getElementById('inp-ausencias')?.value) || 0;
+  // Período seleccionado en Patronal (y sincronizado con Liquidación)
+  const mes = parseInt(document.getElementById('inp-mes-patronal')?.value || document.getElementById('inp-mes')?.value || (new Date().getMonth() + 1));
+  const anio = parseInt(document.getElementById('inp-anio-patronal')?.value || document.getElementById('inp-anio')?.value || (new Date().getFullYear()));
+  const ausencias = parseInt(document.getElementById('inp-ausencias-patronal')?.value || document.getElementById('inp-ausencias')?.value) || 0;
   const diasTrabajados = calcularDiasTrabajadosBase30(w, mes, anio, ausencias);
   const proporcion = diasTrabajados / DIAS_BASE_MES;
 
@@ -1319,11 +1372,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const now = new Date();
   document.getElementById('inp-mes').value = now.getMonth() + 1;
   document.getElementById('inp-anio').value = now.getFullYear();
+  syncPeriodoToPatronal();
 
   // Detectar cambios mes/año para nota Marzo
   ['inp-mes','inp-anio'].forEach(id => {
     document.getElementById(id).addEventListener('change', checkNotaMarzo);
   });
+  document.getElementById('inp-ausencias').addEventListener('input', syncPeriodoToPatronal);
 
   // Service Worker
   if ('serviceWorker' in navigator) {
