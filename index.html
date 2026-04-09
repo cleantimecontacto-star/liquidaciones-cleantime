@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1e3a5f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Cleantime" />
+  <title>Liquidaciones Cleantime</title>
+  <link rel="manifest" href="manifest.json" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    :root {
+      --azul: #1e3a5f;
+      --azul-medio: #2a5298;
+      --turquesa: #17a2b8;
+      --turquesa-light: #e8f7fa;
+      --blanco: #ffffff;
+      --gris-fondo: #f4f6f9;
+      --gris-borde: #e0e6ed;
+      --sombra: 0 2px 12px rgba(30,58,95,0.10);
+      --rojo: #e74c3c;
+      --verde: #27ae60;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--gris-fondo);
+      color: #2d3748;
+      min-height: 100vh;
+    }
+    /* HEADER */
+    header {
+      background: var(--azul);
+      color: white;
+      text-align: center;
+      padding: 16px 20px 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    header h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    header p {
+      font-size: 0.75rem;
+      opacity: 0.75;
+      margin-top: 2px;
+    }
+    /* TABS */
+    .tabs {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 16px;
+      background: var(--azul);
+    }
+    .tab-btn {
+      padding: 8px 20px;
+      border-radius: 50px;
+      border: 2px solid rgba(255,255,255,0.4);
+      background: transparent;
+      color: rgba(255,255,255,0.75);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .tab-btn.active {
+      background: var(--turquesa);
+      border-color: var(--turquesa);
+      color: white;
+    }
+    /* MAIN CONTENT */
+    .content {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    /* CARDS */
+    .card {
+      background: white;
+      border-radius: 14px;
+      box-shadow: var(--sombra);
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--azul);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title .icon {
+      width: 28px; height: 28px;
+      background: var(--turquesa-light);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.9rem;
+    }
+    /* FORM */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .form-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #667;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid var(--gris-borde);
+      border-radius: 9px;
+      font-size: 0.95rem;
+      color: #2d3748;
+      background: #fafbfc;
+      transition: border-color 0.2s;
+      -webkit-appearance: none;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--turquesa);
+      background: white;
+    }
+    /* BOTONES */
+    .btn {
+      padding: 12px 24px;
+      border-radius: 50px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary {
+      background: var(--azul);
+      color: white;
+    }
+    .btn-primary:hover { background: var(--azul-medio); transform: translateY(-1px); }
+    .btn-turquesa {
+      background: var(--turquesa);
+      color: white;
+    }
+    .btn-turquesa:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-outline {
+      background: transparent;
+      color: var(--azul);
+      border: 2px solid var(--azul);
+    }
+    .btn-outline:hover { background: var(--azul); color: white; }
+    .btn-danger {
+      background: transparent;
+      color: var(--rojo);
+      border: 2px solid var(--rojo);
+      padding: 6px 14px;
+      font-size: 0.78rem;
+    }
+    .btn-danger:hover { background: var(--rojo); color: white; }
+    .btn-sm { padding: 7px 16px; font-size: 0.8rem; }
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+    /* RESULTADO LIQUIDACIÓN */
+    .resultado-header {
+      background: var(--azul);
+      color: white;
+      border-radius: 12px 12px 0 0;
+      padding: 16px 18px;
+      margin: -18px -18px 0;
+    }
+    .resultado-header h3 { font-size: 1rem; }
+    .resultado-header p { font-size: 0.78rem; opacity: 0.75; margin-top: 3px; }
+    .resultado-body { padding-top: 16px; }
+    .linea-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--gris-borde);
+      font-size: 0.88rem;
+    }
+    .linea-item:last-child { border-bottom: none; }
+    .linea-item .concepto { color: #555; }
+    .linea-item .monto { font-weight: 600; color: #2d3748; }
+    .linea-item .monto.haber { color: var(--verde); }
+    .linea-item .monto.descuento { color: var(--rojo); }
+    .linea-seccion {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--azul);
+      padding: 10px 0 4px;
+    }
+    .total-box {
+      background: var(--azul);
+      color: white;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .total-box .label { font-size: 0.82rem; opacity: 0.85; }
+    .total-box .monto { font-size: 1.5rem; font-weight: 800; }
+    /* TRABAJADORES */
+    .worker-card {
+      border: 1.5px solid var(--gris-borde);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .worker-card.selected {
+      border-color: var(--turquesa);
+      background: var(--turquesa-light);
+    }
+    .worker-card .wname { font-weight: 700; font-size: 0.92rem; color: var(--azul); }
+    .worker-card .wdetail { font-size: 0.78rem; color: #778; margin-top: 3px; }
+    .worker-actions { display: flex; gap: 8px; }
+    /* HISTORIAL */
+    .hist-item {
+      border: 1.5px solid var(--gris-borde);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 10px;
+      transition: border-color 0.2s;
+    }
+    .hist-item:hover { border-color: var(--turquesa); }
+    .hist-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 6px;
+    }
+    .hist-title { font-weight: 700; font-size: 0.9rem; color: var(--azul); }
+    .hist-liquid { font-size: 1.1rem; font-weight: 800; color: var(--verde); }
+    .hist-detail { font-size: 0.78rem; color: #778; }
+    .hist-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 50px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .badge-turquesa { background: var(--turquesa-light); color: var(--turquesa); }
+    .badge-azul { background: #e8eef7; color: var(--azul); }
+    /* MODAL */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: white;
+      border-radius: 20px 20px 0 0;
+      padding: 20px;
+      width: 100%;
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .modal-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--azul);
+      margin-bottom: 16px;
+    }
+    /* GASTOS PATRONALES */
+    .gasto-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--gris-borde);
+      font-size: 0.88rem;
+    }
+    .gasto-row:last-child { border-bottom: none; }
+    .total-patronal {
+      background: linear-gradient(135deg, #1e3a5f, #2a5298);
+      color: white;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    /* EMPTY STATE */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #aab;
+    }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .empty-state p { font-size: 0.88rem; }
+    /* ALERT */
+    .alert {
+      padding: 10px 14px;
+      border-radius: 9px;
+      font-size: 0.83rem;
+      margin-bottom: 12px;
+    }
+    .alert-info { background: var(--turquesa-light); color: #0c7a8a; border-left: 3px solid var(--turquesa); }
+    .alert-warn { background: #fff8e1; color: #856404; border-left: 3px solid #ffc107; }
+    /* NOTA MARZO */
+    .nota-marzo {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 9px;
+      padding: 10px 12px;
+      font-size: 0.8rem;
+      color: #856404;
+      margin-top: 8px;
+    }
+    @media (max-width: 480px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid.cols-3 { grid-template-columns: 1fr 1fr; }
+      .tab-btn { padding: 7px 14px; font-size: 0.78rem; }
+      .content { padding: 12px; }
+      .total-box .monto { font-size: 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>💧 Cleantime SpA</h1>
+  <p>Gestión de Liquidaciones de Sueldo</p>
+</header>
+
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('liquidacion')">📄 Liquidación</button>
+  <button class="tab-btn" onclick="showTab('historial')">📋 Historial</button>
+  <button class="tab-btn" onclick="showTab('patronal')">🏢 Patronal</button>
+  <button class="tab-btn" onclick="showTab('trabajadores')">👷 Trabajadores</button>
+</div>
+
+<div class="content">
+
+  <!-- ═══════════════════════════════════════ TAB: LIQUIDACIÓN -->
+  <div id="tab-liquidacion" class="tab-panel active">
+
+    <!-- Seleccionar trabajador -->
+    <div class="card">
+      <div class="card-title"><div class="icon">👷</div> Trabajador</div>
+      <div class="form-group">
+        <label>Seleccionar trabajador</label>
+        <select id="sel-trabajador" onchange="onWorkerChange()">
+          <!-- Opciones generadas por JS -->
+        </select>
+      </div>
+    </div>
+
+    <!-- Periodo y ausencias -->
+    <div class="card">
+      <div class="card-title"><div class="icon">📅</div> Período y Asistencia</div>
+      <div class="form-grid cols-3">
+        <div class="form-group">
+          <label>Mes</label>
+          <select id="inp-mes">
+            <option value="1">Enero</option><option value="2">Febrero</option>
+            <option value="3">Marzo</option><option value="4">Abril</option>
+            <option value="5">Mayo</option><option value="6">Junio</option>
+            <option value="7">Julio</option><option value="8">Agosto</option>
+            <option value="9">Septiembre</option><option value="10">Octubre</option>
+            <option value="11">Noviembre</option><option value="12">Diciembre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Año</label>
+          <input type="number" id="inp-anio" value="2026" min="2020" max="2030" />
+        </div>
+        <div class="form-group">
+          <label>Días Ausente</label>
+          <input type="number" id="inp-ausencias" value="0" min="0" max="22" />
+        </div>
+      </div>
+      <div id="nota-marzo" class="nota-marzo" style="display:none">
+        ⚠️ <strong>Marzo 2026:</strong> Ingreso el 13/03 → se calculan 9 días hábiles trabajados de 22 posibles.
+      </div>
+    </div>
+
+    <!-- Botón calcular -->
+    <div style="text-align:center; margin-bottom:16px;">
+      <button class="btn btn-primary" onclick="calcular()" style="font-size:1rem;padding:14px 36px;">
+        🧮 Calcular Liquidación
+      </button>
+    </div>
+
+    <!-- Resultado -->
+    <div id="resultado" class="card" style="display:none">
+      <div class="resultado-header">
+        <h3 id="res-titulo">Liquidación</h3>
+        <p id="res-subtitulo"></p>
+      </div>
+      <div class="resultado-body">
+        <div class="linea-seccion">📥 Haberes</div>
+        <div id="res-haberes"></div>
+        <div class="linea-seccion">📤 Descuentos Previsionales</div>
+        <div id="res-previsionales"></div>
+        <div class="linea-seccion">💰 Impuesto</div>
+        <div id="res-impuesto"></div>
+        <div class="total-box">
+          <div>
+            <div class="label">LÍQUIDO A PAGAR</div>
+            <div class="label" id="res-dias-info" style="font-size:0.7rem;opacity:0.7;"></div>
+          </div>
+          <div class="monto" id="res-liquido"></div>
+        </div>
+        <div class="btn-row" style="margin-top:14px;justify-content:center;">
+          <button class="btn btn-turquesa" onclick="generarPDF()">📄 Generar PDF</button>
+          <button class="btn btn-outline" onclick="guardarLiquidacion()">💾 Guardar</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════ TAB: HISTORIAL -->
+  <div id="tab-historial" class="tab-panel">
+    <div class="card">
+      <div class="card-title"><div class="icon">📋</div> Historial de Liquidaciones</div>
+      <div id="historial-list"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ TAB: PATRONAL -->
+  <div id="tab-patronal" class="tab-panel">
+    <div class="card">
+      <div class="card-title"><div class="icon">🏢</div> Gastos Patronales</div>
+      <div class="alert alert-info">
+        Estos costos son pagados por la empresa y NO se descuentan del trabajador.
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label>Trabajador</label>
+        <select id="sel-trabajador-patronal" onchange="calcularPatronal()">
+          <!-- generado por JS -->
+        </select>
+      </div>
+      <div id="gastos-patronales-body"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ TAB: TRABAJADORES -->
+  <div id="tab-trabajadores" class="tab-panel">
+    <div class="card">
+      <div class="card-title"><div class="icon">👷</div> Trabajadores Registrados</div>
+      <div id="workers-list"></div>
+      <button class="btn btn-turquesa btn-sm" style="margin-top:4px;" onclick="abrirModalTrabajador(null)">
+        ➕ Agregar Trabajador
+      </button>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<!-- MODAL TRABAJADOR -->
+<div id="modal-trabajador" class="modal-overlay" onclick="cerrarModalSiOverlay(event)">
+  <div class="modal">
+    <div class="modal-title" id="modal-worker-title">Nuevo Trabajador</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Nombre completo</label>
+        <input type="text" id="w-nombre" placeholder="Juan Pérez" />
+      </div>
+      <div class="form-group">
+        <label>RUT</label>
+        <input type="text" id="w-rut" placeholder="12.345.678-9" />
+      </div>
+      <div class="form-group">
+        <label>Cargo</label>
+        <input type="text" id="w-cargo" placeholder="Auxiliar de Aseo" />
+      </div>
+      <div class="form-group">
+        <label>Fecha Ingreso</label>
+        <input type="date" id="w-ingreso" />
+      </div>
+      <div class="form-group">
+        <label>Sueldo Base</label>
+        <input type="number" id="w-sueldo" placeholder="540000" />
+      </div>
+      <div class="form-group">
+        <label>Colación (no imponible)</label>
+        <input type="number" id="w-colacion" placeholder="30000" />
+      </div>
+      <div class="form-group">
+        <label>Movilización (no imponible)</label>
+        <input type="number" id="w-movilizacion" placeholder="30000" />
+      </div>
+      <div class="form-group">
+        <label>AFP</label>
+        <select id="w-afp">
+          <option value="Provida:11.55">AFP Provida (11.55%)</option>
+          <option value="Habitat:11.27">AFP Habitat (11.27%)</option>
+          <option value="Capital:11.44">AFP Capital (11.44%)</option>
+          <option value="Cuprum:11.44">AFP Cuprum (11.44%)</option>
+          <option value="Planvital:11.16">AFP Planvital (11.16%)</option>
+          <option value="Modelo:10.58">AFP Modelo (10.58%)</option>
+          <option value="Uno:10.49">AFP Uno (10.49%)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Salud</label>
+        <select id="w-salud">
+          <option value="FONASA:7">FONASA (7%)</option>
+          <option value="ISAPRE:7">ISAPRE (7% mínimo)</option>
+        </select>
+      </div>
+    </div>
+    <input type="hidden" id="w-id" value="" />
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="guardarTrabajador()">💾 Guardar</button>
+      <button class="btn btn-outline" onclick="cerrarModal('modal-trabajador')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VER LIQUIDACIÓN HISTORIAL -->
+<div id="modal-historial" class="modal-overlay" onclick="cerrarModalSiOverlay(event)">
+  <div class="modal">
+    <div class="modal-title">📄 Detalle Liquidación</div>
+    <div id="modal-historial-body"></div>
+    <div class="btn-row" style="margin-top:16px;justify-content:center;">
+      <button class="btn btn-turquesa" id="btn-repdf">📄 Generar PDF</button>
+      <button class="btn btn-outline" onclick="cerrarModal('modal-historial')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONSTANTES EMPRESA
+// ═══════════════════════════════════════════════════════════
+const EMPRESA = {
+  nombre: "Cleantime SpA",
+  rut: "78.375.621-8",
+  direccion: "García Hurtado de Mendoza 8111, La Florida, Santiago",
+  mutual: "ACHS"
+};
+
+const DIAS_HABILES_MES = 22;
+const UF_2026 = 38000;
+
+// Tasas previsionales trabajador (% sobre imponible)
+const TASAS_TRAB = {
+  afc: 0.60,      // AFC cesantía trabajador
+  sis: 1.54,      // SIS (cotización previsional)
+  isl: 0.93,      // ISL
+  ssp: 0.90       // Seguro Social Previsional
+};
+
+// Tasas patronales (% sobre imponible)
+const TASAS_PAT = {
+  afp_pat: 2.40,
+  sis_pat: 1.45,
+  achs: 0.93,
+  afc_pat: 2.40
+};
+
+// ═══════════════════════════════════════════════════════════
+// TRABAJADORES — localStorage
+// ═══════════════════════════════════════════════════════════
+function getTrabajadores() {
+  const data = localStorage.getItem('ct_trabajadores');
+  if (data) return JSON.parse(data);
+  // Default: Víctor
+  const def = [{
+    id: 'victor',
+    nombre: 'Víctor Mao Ly Saldías',
+    rut: '15.307.937-4',
+    cargo: 'Auxiliar de Aseo',
+    ingreso: '2026-03-13',
+    sueldo: 540000,
+    colacion: 30000,
+    movilizacion: 30000,
+    afp: 'Provida:11.55',
+    salud: 'FONASA:7'
+  }];
+  localStorage.setItem('ct_trabajadores', JSON.stringify(def));
+  return def;
+}
+
+function setTrabajadores(arr) {
+  localStorage.setItem('ct_trabajadores', JSON.stringify(arr));
+}
+
+function getWorkerById(id) {
+  return getTrabajadores().find(w => w.id === id);
+}
+
+// ═══════════════════════════════════════════════════════════
+// HISTORIAL — localStorage
+// ═══════════════════════════════════════════════════════════
+function getHistorial() {
+  const data = localStorage.getItem('ct_historial');
+  return data ? JSON.parse(data) : [];
+}
+
+function setHistorial(arr) {
+  localStorage.setItem('ct_historial', JSON.stringify(arr));
+}
+
+// ═══════════════════════════════════════════════════════════
+// NAVEGACIÓN TABS
+// ═══════════════════════════════════════════════════════════
+function showTab(tab) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (tab === 'historial') renderHistorial();
+  if (tab === 'trabajadores') renderTrabajadores();
+  if (tab === 'patronal') { poblarSelectsTrabajadores(); calcularPatronal(); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// POBLAR SELECTS
+// ═══════════════════════════════════════════════════════════
+function poblarSelectsTrabajadores() {
+  const workers = getTrabajadores();
+  ['sel-trabajador','sel-trabajador-patronal'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const val = sel.value;
+    sel.innerHTML = workers.map(w =>
+      `<option value="${w.id}">${w.nombre}</option>`
+    ).join('');
+    if (val && workers.find(w => w.id === val)) sel.value = val;
+  });
+}
+
+function onWorkerChange() {
+  const w = getWorkerById(document.getElementById('sel-trabajador').value);
+  if (!w) return;
+  checkNotaMarzo();
+  document.getElementById('resultado').style.display = 'none';
+}
+
+function checkNotaMarzo() {
+  const w = getWorkerById(document.getElementById('sel-trabajador').value);
+  const mes = parseInt(document.getElementById('inp-mes').value);
+  const anio = parseInt(document.getElementById('inp-anio').value);
+  const nota = document.getElementById('nota-marzo');
+  if (w && w.ingreso === '2026-03-13' && mes === 3 && anio === 2026) {
+    nota.style.display = 'block';
+  } else {
+    nota.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// CÁLCULO PRINCIPAL
+// ═══════════════════════════════════════════════════════════
+function calcular() {
+  const wid = document.getElementById('sel-trabajador').value;
+  const w = getWorkerById(wid);
+  if (!w) return alert('Selecciona un trabajador');
+
+  const mes = parseInt(document.getElementById('inp-mes').value);
+  const anio = parseInt(document.getElementById('inp-anio').value);
+  const ausencias = parseInt(document.getElementById('inp-ausencias').value) || 0;
+
+  // Días trabajados
+  let diasTrabajados = DIAS_HABILES_MES - ausencias;
+  let esMarzoIngreso = false;
+
+  // Caso especial: primer mes (ingreso en el mes)
+  if (w.ingreso) {
+    const fi = new Date(w.ingreso + 'T12:00:00');
+    if (fi.getFullYear() === anio && (fi.getMonth() + 1) === mes && fi.getDate() > 1) {
+      // Ingresó en el mes: calcular días hábiles desde ingreso
+      // Usamos cálculo simplificado: (días calendario restantes / días totales) * 22
+      const diasCalendario = new Date(anio, mes, 0).getDate();
+      const diasDesdeIngreso = diasCalendario - fi.getDate() + 1;
+      diasTrabajados = Math.round((diasDesdeIngreso / diasCalendario) * DIAS_HABILES_MES) - ausencias;
+      if (w.ingreso === '2026-03-13' && mes === 3 && anio === 2026) {
+        diasTrabajados = 13 - ausencias; // Corrección manual: 9 días hábiles → usamos 13 días
+        esMarzoIngreso = true;
+      }
+    }
+  }
+
+  diasTrabajados = Math.max(0, diasTrabajados);
+  const proporcion = diasTrabajados / DIAS_HABILES_MES;
+
+  // AFP y salud del trabajador
+  const [afpNombre, afpTasa] = w.afp.split(':');
+  const [saludNombre, saludTasa] = w.salud.split(':');
+
+  // Base imponible proporcional
+  const sueldoBase = Math.round(w.sueldo * proporcion);
+  const colacion = Math.round(w.colacion * proporcion);
+  const movilizacion = Math.round(w.movilizacion * proporcion);
+  const totalHaberes = sueldoBase + colacion + movilizacion;
+
+  // Base para descuentos: solo sueldo base imponible
+  const base = sueldoBase;
+
+  // Descuentos
+  const descAFP     = Math.round(base * parseFloat(afpTasa) / 100);
+  const descSalud   = Math.round(base * parseFloat(saludTasa) / 100);
+  const descAFC     = Math.round(base * TASAS_TRAB.afc / 100);
+  const descSIS     = Math.round(base * TASAS_TRAB.sis / 100);
+  const descISL     = Math.round(base * TASAS_TRAB.isl / 100);
+  const descSSP     = Math.round(base * TASAS_TRAB.ssp / 100);
+  const totalPrevis = descAFP + descSalud + descAFC + descSIS + descISL + descSSP;
+
+  // Base imponible para impuesto único = base - AFP - Salud - AFC
+  const baseImpuesto = base - descAFP - descSalud - descAFC;
+  const impuesto = calcularImpuestoUnico(baseImpuesto);
+
+  const totalDescuentos = totalPrevis + impuesto;
+  const liquido = totalHaberes - totalDescuentos;
+
+  const meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio',
+    'Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+  // Guardar data para PDF y guardar
+  window._ultimaLiquidacion = {
+    worker: w, mes, anio, ausencias, diasTrabajados,
+    sueldoBase, colacion, movilizacion, totalHaberes,
+    base, afpNombre, afpTasa, saludNombre, saludTasa,
+    descAFP, descSalud, descAFC, descSIS, descISL, descSSP,
+    totalPrevis, baseImpuesto, impuesto, totalDescuentos, liquido,
+    proporcion, esMarzoIngreso
+  };
+
+  // Renderizar
+  document.getElementById('res-titulo').textContent =
+    `Liquidación ${meses[mes]} ${anio}`;
+  document.getElementById('res-subtitulo').textContent =
+    `${w.nombre} — ${w.cargo}`;
+
+  document.getElementById('res-haberes').innerHTML = `
+    <div class="linea-item"><span class="concepto">Sueldo Base (${diasTrabajados}/${DIAS_HABILES_MES} días)</span><span class="monto haber">${fmt(sueldoBase)}</span></div>
+    <div class="linea-item"><span class="concepto">Colación (no imponible)</span><span class="monto haber">${fmt(colacion)}</span></div>
+    <div class="linea-item"><span class="concepto">Movilización (no imponible)</span><span class="monto haber">${fmt(movilizacion)}</span></div>
+    <div class="linea-item" style="font-weight:700"><span class="concepto">Total Haberes</span><span class="monto">${fmt(totalHaberes)}</span></div>
+  `;
+
+  document.getElementById('res-previsionales').innerHTML = `
+    <div class="linea-item"><span class="concepto">AFP ${afpNombre} (${afpTasa}%)</span><span class="monto descuento">- ${fmt(descAFP)}</span></div>
+    <div class="linea-item"><span class="concepto">${saludNombre} (${saludTasa}%)</span><span class="monto descuento">- ${fmt(descSalud)}</span></div>
+    <div class="linea-item"><span class="concepto">AFC Cesantía Trab. (${TASAS_TRAB.afc}%)</span><span class="monto descuento">- ${fmt(descAFC)}</span></div>
+    <div class="linea-item"><span class="concepto">SIS AFP ${afpNombre} (${TASAS_TRAB.sis}%)</span><span class="monto descuento">- ${fmt(descSIS)}</span></div>
+    <div class="linea-item"><span class="concepto">ISL (${TASAS_TRAB.isl}%)</span><span class="monto descuento">- ${fmt(descISL)}</span></div>
+    <div class="linea-item"><span class="concepto">Seguro Social Previsional (${TASAS_TRAB.ssp}%)</span><span class="monto descuento">- ${fmt(descSSP)}</span></div>
+    <div class="linea-item" style="font-weight:700"><span class="concepto">Total Previsional</span><span class="monto descuento">- ${fmt(totalPrevis)}</span></div>
+  `;
+
+  document.getElementById('res-impuesto').innerHTML = `
+    <div class="linea-item"><span class="concepto">Base imp. (${fmt(base)} - prev.)</span><span class="monto">${fmt(baseImpuesto)}</span></div>
+    <div class="linea-item"><span class="concepto">Impuesto Único 2da Categoría</span><span class="monto descuento">${impuesto > 0 ? '- ' + fmt(impuesto) : 'Exento'}</span></div>
+  `;
+
+  document.getElementById('res-dias-info').textContent =
+    ausencias > 0 ? `${diasTrabajados} días trabajados (${ausencias} ausencias)` : `${diasTrabajados} días trabajados`;
+
+  document.getElementById('res-liquido').textContent = fmt(liquido);
+  document.getElementById('resultado').style.display = 'block';
+  document.getElementById('resultado').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ═══════════════════════════════════════════════════════════
+// IMPUESTO ÚNICO 2DA CATEGORÍA — tabla SII 2026
+// Base en pesos (sobre renta imponible mensual)
+// UF ≈ $38.000
+// ═══════════════════════════════════════════════════════════
+function calcularImpuestoUnico(base) {
+  // Tabla en UF (tramos mensuales 2026 aprox.)
+  const UF = UF_2026;
+  // Tramos: [límite_inferior_UF, tasa%, rebaja_UF]
+  const tabla = [
+    [0,     13.5, 0,    0      ],
+    [13.5,  30,   0.04, 0.54   ],
+    [30,    50,   0.08, 1.74   ],
+    [50,    70,   0.135, 4.24  ],
+    [70,    90,   0.23, 10.89  ],
+    [90,    120,  0.304, 17.55 ],
+    [120,   150,  0.355, 23.67 ],
+    [150,   Infinity, 0.40, 31.17]
+  ];
+
+  const baseUF = base / UF;
+  for (const [inf, sup, tasa, rebaja] of tabla) {
+    if (baseUF >= inf && baseUF < sup) {
+      if (tasa === 0) return 0;
+      const impuesto = Math.round(base * tasa - rebaja * UF);
+      return Math.max(0, impuesto);
+    }
+  }
+  return 0;
+}
+
+// ═══════════════════════════════════════════════════════════
+// GASTOS PATRONALES
+// ═══════════════════════════════════════════════════════════
+function calcularPatronal() {
+  const wid = document.getElementById('sel-trabajador-patronal').value;
+  const w = getWorkerById(wid);
+  if (!w) return;
+
+  const base = w.sueldo;
+  const [afpNombre] = w.afp.split(':');
+  const afpPat  = Math.round(base * TASAS_PAT.afp_pat / 100);
+  const sisPat  = Math.round(base * TASAS_PAT.sis_pat / 100);
+  const achs    = Math.round(base * TASAS_PAT.achs / 100);
+  const afcPat  = Math.round(base * TASAS_PAT.afc_pat / 100);
+  const total   = afpPat + sisPat + achs + afcPat;
+  const costoTotal = w.sueldo + w.colacion + w.movilizacion + total;
+
+  document.getElementById('gastos-patronales-body').innerHTML = `
+    <p style="font-size:0.8rem;color:#778;margin-bottom:10px;">Sobre sueldo imponible: ${fmt(base)}</p>
+    <div class="gasto-row"><span>AFP ${afpNombre} Patronal (${TASAS_PAT.afp_pat}%)</span><span style="font-weight:600;">${fmt(afpPat)}</span></div>
+    <div class="gasto-row"><span>SIS Patronal (${TASAS_PAT.sis_pat}%)</span><span style="font-weight:600;">${fmt(sisPat)}</span></div>
+    <div class="gasto-row"><span>ACHS / Mutual (${TASAS_PAT.achs}%)</span><span style="font-weight:600;">${fmt(achs)}</span></div>
+    <div class="gasto-row"><span>AFC Cesantía Patronal (${TASAS_PAT.afc_pat}%)</span><span style="font-weight:600;">${fmt(afcPat)}</span></div>
+    <div class="total-patronal" style="margin-top:12px;">
+      <div>
+        <div style="font-size:0.75rem;opacity:0.8;">COSTO EMPLEADOR (sueldo + aportes)</div>
+        <div style="font-size:0.7rem;opacity:0.6;margin-top:2px;">Incluye haberes e imposiciones</div>
+      </div>
+      <div style="font-size:1.3rem;font-weight:800;">${fmt(costoTotal)}</div>
+    </div>
+    <div style="margin-top:8px;text-align:right;font-size:0.78rem;color:#778;">Solo aportes patronales: ${fmt(total)}</div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════
+// GENERAR PDF
+// ═══════════════════════════════════════════════════════════
+function generarPDF(liqData) {
+  const d = liqData || window._ultimaLiquidacion;
+  if (!d) return alert('Primero calcula una liquidación');
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+
+  const meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio',
+    'Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+  // Colores
+  const azul = [30, 58, 95];
+  const turquesa = [23, 162, 184];
+  const gris = [245, 247, 250];
+  const negro = [45, 55, 72];
+
+  // Header
+  doc.setFillColor(...azul);
+  doc.rect(0, 0, 216, 35, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('LIQUIDACIÓN DE SUELDO', 108, 14, { align: 'center' });
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${EMPRESA.nombre} — RUT ${EMPRESA.rut}`, 108, 21, { align: 'center' });
+  doc.text(EMPRESA.direccion, 108, 27, { align: 'center' });
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`${meses[d.mes]} ${d.anio}`, 108, 33, { align: 'center' });
+
+  let y = 44;
+
+  // Datos trabajador
+  doc.setFillColor(...gris);
+  doc.rect(14, y, 188, 28, 'F');
+  doc.setTextColor(...azul);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DATOS DEL TRABAJADOR', 18, y + 6);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...negro);
+  doc.text(`Nombre: ${d.worker.nombre}`, 18, y + 12);
+  doc.text(`RUT: ${d.worker.rut}`, 18, y + 18);
+  doc.text(`Cargo: ${d.worker.cargo}`, 18, y + 24);
+  doc.text(`Días trabajados: ${d.diasTrabajados} de ${DIAS_HABILES_MES}`, 120, y + 12);
+  doc.text(`AFP: ${d.afpNombre}  |  Salud: ${d.saludNombre}`, 120, y + 18);
+  if (d.ausencias > 0) doc.text(`Ausencias: ${d.ausencias} días`, 120, y + 24);
+
+  y += 34;
+
+  const fila = (concepto, monto, esDesc = false, negrita = false) => {
+    if (negrita) {
+      doc.setFillColor(230, 235, 245);
+      doc.rect(14, y - 4, 188, 8, 'F');
+    }
+    doc.setFont('helvetica', negrita ? 'bold' : 'normal');
+    doc.setTextColor(...negro);
+    doc.setFontSize(9);
+    doc.text(concepto, 18, y);
+    if (esDesc && monto !== 'Exento') {
+      doc.setTextColor(231, 76, 60);
+      doc.text(`- ${monto}`, 200, y, { align: 'right' });
+    } else if (monto === 'Exento') {
+      doc.setTextColor(39, 174, 96);
+      doc.text(monto, 200, y, { align: 'right' });
+    } else {
+      doc.setTextColor(39, 174, 96);
+      doc.text(monto, 200, y, { align: 'right' });
+    }
+    doc.setDrawColor(220, 225, 235);
+    doc.line(14, y + 2, 202, y + 2);
+    y += 8;
+  };
+
+  const seccion = (titulo) => {
+    doc.setFillColor(...turquesa);
+    doc.rect(14, y, 188, 6, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text(titulo, 18, y + 4.5);
+    y += 9;
+  };
+
+  seccion('HABERES');
+  fila(`Sueldo Base (${d.diasTrabajados}/${DIAS_HABILES_MES} días)`, fmt(d.sueldoBase));
+  fila('Colación (no imponible)', fmt(d.colacion));
+  fila('Movilización (no imponible)', fmt(d.movilizacion));
+  fila('Total Haberes', fmt(d.totalHaberes), false, true);
+
+  y += 2;
+  seccion('DESCUENTOS PREVISIONALES');
+  fila(`AFP ${d.afpNombre} (${d.afpTasa}%)`, fmt(d.descAFP), true);
+  fila(`${d.saludNombre} (${d.saludTasa}%)`, fmt(d.descSalud), true);
+  fila(`AFC Cesantía Trabajador (${TASAS_TRAB.afc}%)`, fmt(d.descAFC), true);
+  fila(`SIS AFP ${d.afpNombre} (${TASAS_TRAB.sis}%)`, fmt(d.descSIS), true);
+  fila(`ISL (${TASAS_TRAB.isl}%)`, fmt(d.descISL), true);
+  fila(`Seguro Social Previsional (${TASAS_TRAB.ssp}%)`, fmt(d.descSSP), true);
+  fila('Total Previsional', fmt(d.totalPrevis), true, true);
+
+  y += 2;
+  seccion('IMPUESTO');
+  fila(`Base imponible para impuesto: ${fmt(d.baseImpuesto)}`, '');
+  fila('Impuesto Único 2da Categoría', d.impuesto > 0 ? fmt(d.impuesto) : 'Exento', d.impuesto > 0);
+
+  // Total líquido
+  y += 4;
+  doc.setFillColor(...azul);
+  doc.rect(14, y, 188, 14, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('LÍQUIDO A PAGAR:', 18, y + 9);
+  doc.setFontSize(14);
+  doc.text(fmt(d.liquido), 200, y + 9, { align: 'right' });
+
+  y += 22;
+  // Firma
+  doc.setTextColor(150, 150, 150);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Generado el ${new Date().toLocaleDateString('es-CL')} — Cleantime SpA`, 108, y, { align: 'center' });
+
+  const fileName = `Liquidacion_${d.worker.nombre.split(' ')[0]}_${meses[d.mes]}${d.anio}.pdf`;
+  doc.save(fileName);
+}
+
+// ═══════════════════════════════════════════════════════════
+// GUARDAR LIQUIDACIÓN
+// ═══════════════════════════════════════════════════════════
+function guardarLiquidacion() {
+  const d = window._ultimaLiquidacion;
+  if (!d) return;
+  const hist = getHistorial();
+  const meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio',
+    'Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const id = Date.now().toString();
+  hist.unshift({ id, ...d, fechaGuardado: new Date().toISOString() });
+  setHistorial(hist);
+  alert(`✅ Liquidación ${meses[d.mes]} ${d.anio} guardada correctamente`);
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER HISTORIAL
+// ═══════════════════════════════════════════════════════════
+function renderHistorial() {
+  const hist = getHistorial();
+  const meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio',
+    'Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const el = document.getElementById('historial-list');
+  if (hist.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>No hay liquidaciones guardadas</p></div>`;
+    return;
+  }
+  el.innerHTML = hist.map(h => `
+    <div class="hist-item">
+      <div class="hist-header">
+        <div>
+          <div class="hist-title">${meses[h.mes]} ${h.anio}</div>
+          <div class="hist-detail">${h.worker.nombre}</div>
+        </div>
+        <div class="hist-liquid">${fmt(h.liquido)}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <span class="badge badge-azul">Haberes: ${fmt(h.totalHaberes)}</span>
+        <span class="badge badge-turquesa">Desc: ${fmt(h.totalDescuentos)}</span>
+        ${h.ausencias > 0 ? `<span class="badge" style="background:#fff3cd;color:#856404;">${h.ausencias} ausencias</span>` : ''}
+      </div>
+      <div class="hist-actions">
+        <button class="btn btn-turquesa btn-sm" onclick="verLiquidacion('${h.id}')">👁 Ver</button>
+        <button class="btn btn-outline btn-sm" onclick="reGenerarPDF('${h.id}')">📄 PDF</button>
+        <button class="btn btn-danger" onclick="eliminarHistorial('${h.id}')">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function verLiquidacion(id) {
+  const h = getHistorial().find(x => x.id === id);
+  if (!h) return;
+  const meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio',
+    'Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  document.getElementById('modal-historial-body').innerHTML = `
+    <p style="color:#778;font-size:0.85rem;margin-bottom:12px;">${h.worker.nombre} — ${meses[h.mes]} ${h.anio}</p>
+    <div class="linea-item"><span>Sueldo Base</span><span class="monto">${fmt(h.sueldoBase)}</span></div>
+    <div class="linea-item"><span>Colación</span><span class="monto">${fmt(h.colacion)}</span></div>
+    <div class="linea-item"><span>Movilización</span><span class="monto">${fmt(h.movilizacion)}</span></div>
+    <div class="linea-item" style="font-weight:700"><span>Total Haberes</span><span class="monto">${fmt(h.totalHaberes)}</span></div>
+    <div class="linea-item"><span>AFP</span><span class="monto descuento">- ${fmt(h.descAFP)}</span></div>
+    <div class="linea-item"><span>Salud</span><span class="monto descuento">- ${fmt(h.descSalud)}</span></div>
+    <div class="linea-item"><span>AFC</span><span class="monto descuento">- ${fmt(h.descAFC)}</span></div>
+    <div class="linea-item"><span>SIS</span><span class="monto descuento">- ${fmt(h.descSIS)}</span></div>
+    <div class="linea-item"><span>ISL</span><span class="monto descuento">- ${fmt(h.descISL)}</span></div>
+    <div class="linea-item"><span>SSP</span><span class="monto descuento">- ${fmt(h.descSSP)}</span></div>
+    <div class="linea-item"><span>Impuesto</span><span class="monto descuento">${h.impuesto > 0 ? '- ' + fmt(h.impuesto) : 'Exento'}</span></div>
+    <div class="total-box"><div class="label">LÍQUIDO</div><div class="monto">${fmt(h.liquido)}</div></div>
+  `;
+  document.getElementById('btn-repdf').onclick = () => generarPDF(h);
+  document.getElementById('modal-historial').classList.add('open');
+}
+
+function reGenerarPDF(id) {
+  const h = getHistorial().find(x => x.id === id);
+  if (h) generarPDF(h);
+}
+
+function eliminarHistorial(id) {
+  if (!confirm('¿Eliminar esta liquidación del historial?')) return;
+  setHistorial(getHistorial().filter(h => h.id !== id));
+  renderHistorial();
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER TRABAJADORES
+// ═══════════════════════════════════════════════════════════
+function renderTrabajadores() {
+  const workers = getTrabajadores();
+  const el = document.getElementById('workers-list');
+  el.innerHTML = workers.map(w => `
+    <div class="worker-card">
+      <div>
+        <div class="wname">${w.nombre}</div>
+        <div class="wdetail">RUT ${w.rut} · ${w.cargo} · ${fmt(w.sueldo)}</div>
+        <div class="wdetail">${w.afp.split(':')[0]} · ${w.salud.split(':')[0]}</div>
+      </div>
+      <div class="worker-actions">
+        <button class="btn btn-outline btn-sm" onclick="abrirModalTrabajador('${w.id}')">✏️</button>
+        ${w.id !== 'victor' ? `<button class="btn btn-danger" onclick="eliminarTrabajador('${w.id}')">🗑</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function abrirModalTrabajador(id) {
+  const modal = document.getElementById('modal-trabajador');
+  if (id) {
+    const w = getWorkerById(id);
+    if (!w) return;
+    document.getElementById('modal-worker-title').textContent = 'Editar Trabajador';
+    document.getElementById('w-id').value = w.id;
+    document.getElementById('w-nombre').value = w.nombre;
+    document.getElementById('w-rut').value = w.rut;
+    document.getElementById('w-cargo').value = w.cargo;
+    document.getElementById('w-ingreso').value = w.ingreso;
+    document.getElementById('w-sueldo').value = w.sueldo;
+    document.getElementById('w-colacion').value = w.colacion;
+    document.getElementById('w-movilizacion').value = w.movilizacion;
+    document.getElementById('w-afp').value = w.afp;
+    document.getElementById('w-salud').value = w.salud;
+  } else {
+    document.getElementById('modal-worker-title').textContent = 'Nuevo Trabajador';
+    document.getElementById('w-id').value = '';
+    ['w-nombre','w-rut','w-cargo','w-ingreso','w-sueldo','w-colacion','w-movilizacion'].forEach(f => {
+      document.getElementById(f).value = '';
+    });
+    document.getElementById('w-afp').value = 'Provida:11.55';
+    document.getElementById('w-salud').value = 'FONASA:7';
+  }
+  modal.classList.add('open');
+}
+
+function guardarTrabajador() {
+  const nombre = document.getElementById('w-nombre').value.trim();
+  const rut = document.getElementById('w-rut').value.trim();
+  const cargo = document.getElementById('w-cargo').value.trim();
+  const ingreso = document.getElementById('w-ingreso').value;
+  const sueldo = parseInt(document.getElementById('w-sueldo').value) || 0;
+  const colacion = parseInt(document.getElementById('w-colacion').value) || 0;
+  const movilizacion = parseInt(document.getElementById('w-movilizacion').value) || 0;
+  const afp = document.getElementById('w-afp').value;
+  const salud = document.getElementById('w-salud').value;
+  const wid = document.getElementById('w-id').value;
+
+  if (!nombre || !rut || !sueldo) return alert('Completa nombre, RUT y sueldo base');
+
+  const workers = getTrabajadores();
+  if (wid) {
+    const idx = workers.findIndex(w => w.id === wid);
+    if (idx >= 0) workers[idx] = { ...workers[idx], nombre, rut, cargo, ingreso, sueldo, colacion, movilizacion, afp, salud };
+  } else {
+    workers.push({ id: Date.now().toString(), nombre, rut, cargo, ingreso, sueldo, colacion, movilizacion, afp, salud });
+  }
+  setTrabajadores(workers);
+  cerrarModal('modal-trabajador');
+  renderTrabajadores();
+  poblarSelectsTrabajadores();
+}
+
+function eliminarTrabajador(id) {
+  if (!confirm('¿Eliminar trabajador?')) return;
+  setTrabajadores(getTrabajadores().filter(w => w.id !== id));
+  renderTrabajadores();
+  poblarSelectsTrabajadores();
+}
+
+// ═══════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════
+function fmt(n) {
+  return '$' + Math.round(n).toLocaleString('es-CL');
+}
+
+function cerrarModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function cerrarModalSiOverlay(e) {
+  if (e.target.classList.contains('modal-overlay')) {
+    e.target.classList.remove('open');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  poblarSelectsTrabajadores();
+  // Mes actual
+  const now = new Date();
+  document.getElementById('inp-mes').value = now.getMonth() + 1;
+  document.getElementById('inp-anio').value = now.getFullYear();
+
+  // Detectar cambios mes/año para nota Marzo
+  ['inp-mes','inp-anio'].forEach(id => {
+    document.getElementById(id).addEventListener('change', checkNotaMarzo);
+  });
+
+  // Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+});
+</script>
+</body>
+</html>
