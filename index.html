@@ -602,7 +602,20 @@ const TASAS_PAT = {
 // ═══════════════════════════════════════════════════════════
 function getTrabajadores() {
   const data = localStorage.getItem('ct_trabajadores');
-  if (data) return JSON.parse(data);
+  if (data) {
+    const workers = JSON.parse(data);
+    // Migración suave: normalizar fechas antiguas DD-MM-YYYY a YYYY-MM-DD
+    let changed = false;
+    const normalized = workers.map(w => {
+      if (w && typeof w.ingreso === 'string' && w.ingreso) {
+        const norm = normalizeIngresoString(w.ingreso);
+        if (norm && norm !== w.ingreso) { changed = true; return { ...w, ingreso: norm }; }
+      }
+      return w;
+    });
+    if (changed) localStorage.setItem('ct_trabajadores', JSON.stringify(normalized));
+    return normalized;
+  }
   // Default: Víctor
   const def = [{
     id: 'victor',
@@ -652,6 +665,33 @@ function newId(prefix) {
   return p + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
 }
 
+function parseIngresoDate(ingresoStr) {
+  if (!ingresoStr) return null;
+  // HTML date input uses YYYY-MM-DD, but older data might be DD-MM-YYYY.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(ingresoStr)) {
+    const d = new Date(ingresoStr + 'T12:00:00');
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const m = ingresoStr.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (m) {
+    const [, dd, mm, yyyy] = m;
+    const iso = `${yyyy}-${mm}-${dd}`;
+    const d = new Date(iso + 'T12:00:00');
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(ingresoStr);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function normalizeIngresoString(ingresoStr) {
+  const d = parseIngresoDate(ingresoStr);
+  if (!d) return ingresoStr || '';
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 // ═══════════════════════════════════════════════════════════
 // NAVEGACIÓN TABS
 // ═══════════════════════════════════════════════════════════
@@ -694,7 +734,8 @@ function checkNotaMarzo() {
   const anio = parseInt(document.getElementById('inp-anio').value);
   const nota = document.getElementById('nota-marzo');
   if (!w || !w.ingreso) { nota.style.display = 'none'; return; }
-  const fi = new Date(w.ingreso + 'T12:00:00');
+  const fi = parseIngresoDate(w.ingreso);
+  if (!fi) { nota.style.display = 'none'; return; }
   if (fi.getFullYear() === anio && (fi.getMonth() + 1) === mes && fi.getDate() > 1) {
     // Primer mes: se cuentan días calendario desde ingreso (inclusive),
     // prorrateando siempre sobre base 30 (Chile).
@@ -728,7 +769,10 @@ function calcular() {
 
   // Caso especial: primer mes (ingreso en el mes)
   if (w.ingreso) {
-    const fi = new Date(w.ingreso + 'T12:00:00');
+    const fi = parseIngresoDate(w.ingreso);
+    if (!fi) {
+      // fecha ilegible: no aplicar prorrateo por ingreso
+    } else
     if (fi.getFullYear() === anio && (fi.getMonth() + 1) === mes && fi.getDate() > 1) {
       // Ingresó en el mes: contar días calendario desde ingreso (inclusive),
       // y prorratear siempre sobre base 30 (Chile).
