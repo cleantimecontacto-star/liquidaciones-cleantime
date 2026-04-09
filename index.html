@@ -416,9 +416,7 @@
           <input type="number" id="inp-ausencias" value="0" min="0" max="22" />
         </div>
       </div>
-      <div id="nota-marzo" class="nota-marzo" style="display:none">
-        ⚠️ <strong>Marzo 2026:</strong> Ingreso el 13/03 → se calculan 9 días hábiles trabajados de 22 posibles.
-      </div>
+      <div id="nota-marzo" class="nota-marzo" style="display:none"></div>
     </div>
 
     <!-- Botón calcular -->
@@ -682,8 +680,16 @@ function checkNotaMarzo() {
   const mes = parseInt(document.getElementById('inp-mes').value);
   const anio = parseInt(document.getElementById('inp-anio').value);
   const nota = document.getElementById('nota-marzo');
-  if (w && w.ingreso === '2026-03-13' && mes === 3 && anio === 2026) {
+  if (!w || !w.ingreso) { nota.style.display = 'none'; return; }
+  const fi = new Date(w.ingreso + 'T12:00:00');
+  if (fi.getFullYear() === anio && (fi.getMonth() + 1) === mes && fi.getDate() > 1) {
+    const diasCalendario = new Date(anio, mes, 0).getDate();
+    const diasDesdeIngreso = diasCalendario - fi.getDate() + 1;
+    const diasHabiles = Math.round((diasDesdeIngreso / diasCalendario) * DIAS_HABILES_MES);
+    const nombresMes = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const fechaFmt = fi.toLocaleDateString('es-CL');
     nota.style.display = 'block';
+    nota.innerHTML = `⚠️ <strong>Primer mes — ${nombresMes[mes]} ${anio}:</strong> ${w.nombre} ingresó el ${fechaFmt} → se calculan <strong>${diasHabiles} días hábiles</strong> de ${DIAS_HABILES_MES} posibles.`;
   } else {
     nota.style.display = 'none';
   }
@@ -714,10 +720,7 @@ function calcular() {
       const diasCalendario = new Date(anio, mes, 0).getDate();
       const diasDesdeIngreso = diasCalendario - fi.getDate() + 1;
       diasTrabajados = Math.round((diasDesdeIngreso / diasCalendario) * DIAS_HABILES_MES) - ausencias;
-      if (w.ingreso === '2026-03-13' && mes === 3 && anio === 2026) {
-        diasTrabajados = 13 - ausencias; // Corrección manual: 9 días hábiles → usamos 13 días
-        esMarzoIngreso = true;
-      }
+      esMarzoIngreso = true;
     }
   }
 
