@@ -807,7 +807,10 @@ function calcular() {
   const descSIS     = Math.round(base * TASAS_TRAB.sis / 100);
   const descISL     = Math.round(base * TASAS_TRAB.isl / 100);
   const descSSP     = Math.round(base * TASAS_TRAB.ssp / 100);
-  const totalPrevis = descAFP + descSalud + descAFC + descSIS + descISL + descSSP;
+  // Descuentos trabajador (sí se restan del líquido)
+  const totalPrevis = descAFP + descSalud + descAFC;
+  // Aportes pagados por el empleador (Previred los muestra, pero no se descuentan al trabajador)
+  const aportesEmpleador = descSIS + descISL + descSSP;
 
   // Base imponible para impuesto único = base - AFP - Salud - AFC
   const baseImpuesto = base - descAFP - descSalud - descAFC;
@@ -825,7 +828,7 @@ function calcular() {
     sueldoBase, colacion, movilizacion, totalHaberes,
     base, afpNombre, afpTasa, saludNombre, saludTasa,
     descAFP, descSalud, descAFC, descSIS, descISL, descSSP,
-    totalPrevis, baseImpuesto, impuesto, totalDescuentos, liquido,
+    totalPrevis, aportesEmpleador, baseImpuesto, impuesto, totalDescuentos, liquido,
     proporcion, esMarzoIngreso
   };
 
@@ -846,9 +849,6 @@ function calcular() {
     <div class="linea-item"><span class="concepto">AFP ${afpNombre} (${afpTasa}%)</span><span class="monto descuento">- ${fmt(descAFP)}</span></div>
     <div class="linea-item"><span class="concepto">${saludNombre} (${saludTasa}%)</span><span class="monto descuento">- ${fmt(descSalud)}</span></div>
     <div class="linea-item"><span class="concepto">AFC Cesantía Trab. (${TASAS_TRAB.afc}%)</span><span class="monto descuento">- ${fmt(descAFC)}</span></div>
-    <div class="linea-item"><span class="concepto">SIS AFP ${afpNombre} (${TASAS_TRAB.sis}%)</span><span class="monto descuento">- ${fmt(descSIS)}</span></div>
-    <div class="linea-item"><span class="concepto">ISL (${TASAS_TRAB.isl}%)</span><span class="monto descuento">- ${fmt(descISL)}</span></div>
-    <div class="linea-item"><span class="concepto">Seguro Social Previsional (${TASAS_TRAB.ssp}%)</span><span class="monto descuento">- ${fmt(descSSP)}</span></div>
     <div class="linea-item" style="font-weight:700"><span class="concepto">Total Previsional</span><span class="monto descuento">- ${fmt(totalPrevis)}</span></div>
   `;
 
@@ -1033,9 +1033,6 @@ function buildPdfDoc(d) {
   fila(`AFP ${d.afpNombre} (${d.afpTasa}%)`, fmt(d.descAFP), true);
   fila(`${d.saludNombre} (${d.saludTasa}%)`, fmt(d.descSalud), true);
   fila(`AFC Cesantía Trabajador (${TASAS_TRAB.afc}%)`, fmt(d.descAFC), true);
-  fila(`SIS AFP ${d.afpNombre} (${TASAS_TRAB.sis}%)`, fmt(d.descSIS), true);
-  fila(`ISL (${TASAS_TRAB.isl}%)`, fmt(d.descISL), true);
-  fila(`Seguro Social Previsional (${TASAS_TRAB.ssp}%)`, fmt(d.descSSP), true);
   fila('Total Previsional', fmt(d.totalPrevis), true, true);
 
   y += 2;
@@ -1153,9 +1150,6 @@ function verLiquidacion(id) {
     <div class="linea-item"><span>AFP</span><span class="monto descuento">- ${fmt(h.descAFP)}</span></div>
     <div class="linea-item"><span>Salud</span><span class="monto descuento">- ${fmt(h.descSalud)}</span></div>
     <div class="linea-item"><span>AFC</span><span class="monto descuento">- ${fmt(h.descAFC)}</span></div>
-    <div class="linea-item"><span>SIS</span><span class="monto descuento">- ${fmt(h.descSIS)}</span></div>
-    <div class="linea-item"><span>ISL</span><span class="monto descuento">- ${fmt(h.descISL)}</span></div>
-    <div class="linea-item"><span>SSP</span><span class="monto descuento">- ${fmt(h.descSSP)}</span></div>
     <div class="linea-item"><span>Impuesto</span><span class="monto descuento">${h.impuesto > 0 ? '- ' + fmt(h.impuesto) : 'Exento'}</span></div>
     <div class="total-box"><div class="label">LÍQUIDO</div><div class="monto">${fmt(h.liquido)}</div></div>
   `;
