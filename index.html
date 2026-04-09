@@ -970,20 +970,26 @@ function calcularPatronal() {
   const w = getWorkerById(wid);
   if (!w) return;
 
-  // Período seleccionado en Patronal (y sincronizado con Liquidación)
   const mes = parseInt(document.getElementById('inp-mes-patronal')?.value || document.getElementById('inp-mes')?.value || (new Date().getMonth() + 1));
   const anio = parseInt(document.getElementById('inp-anio-patronal')?.value || document.getElementById('inp-anio')?.value || (new Date().getFullYear()));
-  const ausencias = parseInt(document.getElementById('inp-ausencias-patronal')?.value || document.getElementById('inp-ausencias')?.value) || 0;
-  const diasTrabajados = calcularDiasTrabajadosBase30(w, mes, anio, ausencias);
-  const proporcion = diasTrabajados / DIAS_BASE_MES;
-
-  const base = Math.round(w.sueldo * proporcion); // remuneración imponible del mes
-  const [afpNombre, afpTasa] = w.afp.split(':');
-  const [saludNombre, saludTasa] = w.salud.split(':');
   const mesesNombre = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const mesLabel = `${mesesNombre[mes] || mes}/${anio}`;
 
-  // Montos "según Previred" (pagados a instituciones, sobre imponible)
+  // Buscar liquidación guardada para este trabajador y período
+  const entrada = getHistorial().find(h => (h.workerId === wid || h.worker?.id === wid) && h.mes === mes && h.anio === anio);
+
+  if (!entrada) {
+    document.getElementById('gastos-patronales-body').innerHTML = `
+      <p style="font-size:0.85rem;color:#e57373;margin-top:16px;text-align:center;">
+        ⚠️ No existe liquidación guardada para <strong>${mesLabel}</strong>.<br>
+        <span style="font-size:0.78rem;color:#778;">Genera y guarda la liquidación primero.</span>
+      </p>`;
+    return;
+  }
+
+  // Usar datos de la liquidación guardada
+  const { base, afpNombre, afpTasa, saludNombre, saludTasa, diasTrabajados, colacion, movilizacion } = entrada;
+
   const afpOblig = Math.round(base * parseFloat(afpTasa) / 100);
   const saludCot = Math.round(base * parseFloat(saludTasa) / 100);
   const afcTotal = Math.round(base * ((TASAS_TRAB.afc + TASAS_PAT.afc_pat) / 100)); // 0.6% + 2.4% = 3.0%
@@ -992,9 +998,7 @@ function calcularPatronal() {
   const ssp = Math.round(base * TASAS_TRAB.ssp / 100);
 
   const totalPagadoPrevired = afpOblig + saludCot + afcTotal + sis + isl + ssp;
-  const colacion = Math.round(w.colacion * proporcion);
-  const movilizacion = Math.round(w.movilizacion * proporcion);
-  const costoEmpresa = base + colacion + movilizacion + (sis + isl + ssp) + Math.round(base * (TASAS_PAT.afp_pat / 100)) + Math.round(base * (TASAS_PAT.afc_pat / 100));
+  const costoEmpresa = base + (colacion||0) + (movilizacion||0) + (sis + isl + ssp) + Math.round(base * (TASAS_PAT.afp_pat / 100)) + Math.round(base * (TASAS_PAT.afc_pat / 100));
 
   document.getElementById('gastos-patronales-body').innerHTML = `
     <p style="font-size:0.8rem;color:#778;margin-bottom:10px;">
