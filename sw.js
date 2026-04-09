@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cleantime-v2';
+const CACHE_NAME = 'cleantime-v3';
 const ASSETS = [
   '/',
   '/index.html',

@@ -865,6 +865,19 @@ function calcular() {
   document.getElementById('resultado').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+function calcularDiasTrabajadosBase30(w, mes, anio, ausencias) {
+  let diasTrabajados = DIAS_BASE_MES - (ausencias || 0);
+  if (w?.ingreso) {
+    const fi = parseIngresoDate(w.ingreso);
+    if (fi && fi.getFullYear() === anio && (fi.getMonth() + 1) === mes && fi.getDate() > 1) {
+      const diasCalendario = new Date(anio, mes, 0).getDate();
+      const diasCalendarioDesdeIngreso = Math.max(0, (diasCalendario - fi.getDate()) + 1);
+      diasTrabajados = Math.min(DIAS_BASE_MES, diasCalendarioDesdeIngreso) - (ausencias || 0);
+    }
+  }
+  return Math.max(0, diasTrabajados);
+}
+
 // ═══════════════════════════════════════════════════════════
 // IMPUESTO ÚNICO 2DA CATEGORÍA — tabla SII 2026
 // Base en pesos (sobre renta imponible mensual)
@@ -904,29 +917,48 @@ function calcularPatronal() {
   const w = getWorkerById(wid);
   if (!w) return;
 
-  const base = w.sueldo;
-  const [afpNombre] = w.afp.split(':');
-  const afpPat  = Math.round(base * TASAS_PAT.afp_pat / 100);
-  const sisPat  = Math.round(base * TASAS_PAT.sis_pat / 100);
-  const achs    = Math.round(base * TASAS_PAT.achs / 100);
-  const afcPat  = Math.round(base * TASAS_PAT.afc_pat / 100);
-  const total   = afpPat + sisPat + achs + afcPat;
-  const costoTotal = w.sueldo + w.colacion + w.movilizacion + total;
+  // Usar el mismo periodo/asistencia que Liquidación (base 30)
+  const mes = parseInt(document.getElementById('inp-mes')?.value || (new Date().getMonth() + 1));
+  const anio = parseInt(document.getElementById('inp-anio')?.value || (new Date().getFullYear()));
+  const ausencias = parseInt(document.getElementById('inp-ausencias')?.value) || 0;
+  const diasTrabajados = calcularDiasTrabajadosBase30(w, mes, anio, ausencias);
+  const proporcion = diasTrabajados / DIAS_BASE_MES;
+
+  const base = Math.round(w.sueldo * proporcion); // remuneración imponible del mes
+  const [afpNombre, afpTasa] = w.afp.split(':');
+  const [saludNombre, saludTasa] = w.salud.split(':');
+
+  // Montos "según Previred" (pagados a instituciones, sobre imponible)
+  const afpOblig = Math.round(base * parseFloat(afpTasa) / 100);
+  const saludCot = Math.round(base * parseFloat(saludTasa) / 100);
+  const afcTotal = Math.round(base * ((TASAS_TRAB.afc + TASAS_PAT.afc_pat) / 100)); // 0.6% + 2.4% = 3.0%
+  const sis = Math.round(base * TASAS_TRAB.sis / 100);
+  const isl = Math.round(base * TASAS_TRAB.isl / 100);
+  const ssp = Math.round(base * TASAS_TRAB.ssp / 100);
+
+  const totalPagadoPrevired = afpOblig + saludCot + afcTotal + sis + isl + ssp;
+  const colacion = Math.round(w.colacion * proporcion);
+  const movilizacion = Math.round(w.movilizacion * proporcion);
+  const costoEmpresa = base + colacion + movilizacion + (sis + isl + ssp) + Math.round(base * (TASAS_PAT.afp_pat / 100)) + Math.round(base * (TASAS_PAT.afc_pat / 100));
 
   document.getElementById('gastos-patronales-body').innerHTML = `
-    <p style="font-size:0.8rem;color:#778;margin-bottom:10px;">Sobre sueldo imponible: ${fmt(base)}</p>
-    <div class="gasto-row"><span>AFP ${afpNombre} Patronal (${TASAS_PAT.afp_pat}%)</span><span style="font-weight:600;">${fmt(afpPat)}</span></div>
-    <div class="gasto-row"><span>SIS Patronal (${TASAS_PAT.sis_pat}%)</span><span style="font-weight:600;">${fmt(sisPat)}</span></div>
-    <div class="gasto-row"><span>ACHS / Mutual (${TASAS_PAT.achs}%)</span><span style="font-weight:600;">${fmt(achs)}</span></div>
-    <div class="gasto-row"><span>AFC Cesantía Patronal (${TASAS_PAT.afc_pat}%)</span><span style="font-weight:600;">${fmt(afcPat)}</span></div>
+    <p style="font-size:0.8rem;color:#778;margin-bottom:10px;">
+      Período: ${mes}/${anio} · Días: ${diasTrabajados}/${DIAS_BASE_MES} · Imponible: ${fmt(base)}
+    </p>
+    <div class="gasto-row"><span>${afpNombre} (Cotización obligatoria ${afpTasa}%)</span><span style="font-weight:600;">${fmt(afpOblig)}</span></div>
+    <div class="gasto-row"><span>${saludNombre} (Cotización salud ${saludTasa}%)</span><span style="font-weight:600;">${fmt(saludCot)}</span></div>
+    <div class="gasto-row"><span>AFC (Total 3.0%)</span><span style="font-weight:600;">${fmt(afcTotal)}</span></div>
+    <div class="gasto-row"><span>SIS ${afpNombre} (${TASAS_TRAB.sis}%)</span><span style="font-weight:600;">${fmt(sis)}</span></div>
+    <div class="gasto-row"><span>ISL (${TASAS_TRAB.isl}%)</span><span style="font-weight:600;">${fmt(isl)}</span></div>
+    <div class="gasto-row"><span>Seguro Social Previsional (${TASAS_TRAB.ssp}%)</span><span style="font-weight:600;">${fmt(ssp)}</span></div>
     <div class="total-patronal" style="margin-top:12px;">
       <div>
-        <div style="font-size:0.75rem;opacity:0.8;">COSTO EMPLEADOR (sueldo + aportes)</div>
-        <div style="font-size:0.7rem;opacity:0.6;margin-top:2px;">Incluye haberes e imposiciones</div>
+        <div style="font-size:0.75rem;opacity:0.8;">TOTAL PAGADO (según Previred)</div>
+        <div style="font-size:0.7rem;opacity:0.6;margin-top:2px;">Suma de cotizaciones sobre imponible</div>
       </div>
-      <div style="font-size:1.3rem;font-weight:800;">${fmt(costoTotal)}</div>
+      <div style="font-size:1.3rem;font-weight:800;">${fmt(totalPagadoPrevired)}</div>
     </div>
-    <div style="margin-top:8px;text-align:right;font-size:0.78rem;color:#778;">Solo aportes patronales: ${fmt(total)}</div>
+    <div style="margin-top:8px;text-align:right;font-size:0.78rem;color:#778;">Costo empresa aprox. (incluye no imponibles y aportes empleador): ${fmt(costoEmpresa)}</div>
   `;
 }
 
