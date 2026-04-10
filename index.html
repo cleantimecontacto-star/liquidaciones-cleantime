@@ -10,6 +10,7 @@
   <title>Liquidaciones Cleantime</title>
   <link rel="manifest" href="manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     :root {
       --azul: #1e3a5f;
@@ -36,6 +37,18 @@
       max-width: 100vw;
       overflow-x: hidden;
     }
+
+    /* SYNC INDICATOR */
+    #sync-indicator {
+      font-size: 0.85rem;
+      vertical-align: middle;
+      cursor: default;
+      margin-left: 6px;
+      display: inline-block;
+      transition: opacity 0.3s;
+    }
+    @keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+    #sync-indicator.syncing { animation: spin 1.2s linear infinite; display: inline-block; }
     /* HEADER */
     header {
       background: var(--azul);
@@ -441,7 +454,7 @@
 <body>
 
 <header>
-  <h1>💧 Cleantime SpA</h1>
+  <h1>💧 Cleantime SpA <span id="sync-indicator" title="Inicializando...">🔄</span></h1>
   <p>Gestión de Liquidaciones de Sueldo</p>
 </header>
 
@@ -671,6 +684,85 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════
+// SUPABASE CONFIG — reemplazar con tus credenciales reales
+// ═══════════════════════════════════════════════════════════
+const SUPABASE_URL = 'PEGAR_URL_AQUI';
+const SUPABASE_KEY = 'PEGAR_ANON_KEY_AQUI';
+
+let _supabase = null;
+try {
+  _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+} catch(e) {
+  console.warn('[Supabase] No disponible — modo local activo.', e);
+}
+
+// ── Indicador visual de sync ──────────────────────────────
+function setSyncStatus(status) {
+  const el = document.getElementById('sync-indicator');
+  if (!el) return;
+  el.classList.remove('syncing');
+  if (status === 'ok') {
+    el.textContent = '☁️';
+    el.title = 'Datos sincronizados en la nube';
+  } else if (status === 'syncing') {
+    el.textContent = '🔄';
+    el.title = 'Sincronizando...';
+    el.classList.add('syncing');
+  } else {
+    el.textContent = '⚠️';
+    el.title = 'Modo local — sin conexión a Supabase';
+  }
+}
+
+// ── Inicialización: carga desde Supabase y actualiza localStorage ──
+async function initSupabase() {
+  if (!_supabase) { setSyncStatus('error'); return; }
+  setSyncStatus('syncing');
+  try {
+    // ── Trabajadores ──────────────────────────────────────
+    const { data: trabData, error: trabErr } = await _supabase
+      .from('trabajadores').select('*');
+
+    if (!trabErr) {
+      if (trabData && trabData.length > 0) {
+        // Supabase tiene datos → actualizar localStorage
+        localStorage.setItem('ct_trabajadores', JSON.stringify(trabData));
+      } else {
+        // Supabase vacío → migrar localStorage a Supabase
+        const local = JSON.parse(localStorage.getItem('ct_trabajadores') || 'null');
+        if (local && local.length > 0) {
+          await _supabase.from('trabajadores').upsert(local);
+        }
+      }
+    }
+
+    // ── Historial ─────────────────────────────────────────
+    const { data: histData, error: histErr } = await _supabase
+      .from('historial').select('*');
+
+    if (!histErr) {
+      if (histData && histData.length > 0) {
+        // Supabase tiene datos → reconstruir array y actualizar localStorage
+        const arr = histData.map(r => r.data);
+        localStorage.setItem('ct_historial', JSON.stringify(arr));
+      } else {
+        // Supabase vacío → migrar localStorage a Supabase
+        const local = JSON.parse(localStorage.getItem('ct_historial') || 'null');
+        if (local && local.length > 0) {
+          const rows = local.map(h => ({ id: h.id, data: h }));
+          await _supabase.from('historial').upsert(rows);
+        }
+      }
+    }
+
+    setSyncStatus('ok');
+  } catch(e) {
+    console.warn('[Supabase] initSupabase error:', e);
+    setSyncStatus('error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
 // CONSTANTES EMPRESA
 // ═══════════════════════════════════════════════════════════
 const EMPRESA = {
@@ -701,7 +793,7 @@ const TASAS_PAT = {
 };
 
 // ═══════════════════════════════════════════════════════════
-// TRABAJADORES — localStorage
+// TRABAJADORES — localStorage + Supabase (caché local)
 // ═══════════════════════════════════════════════════════════
 function getTrabajadores() {
   const data = localStorage.getItem('ct_trabajadores');
@@ -737,7 +829,27 @@ function getTrabajadores() {
 }
 
 function setTrabajadores(arr) {
+  // 1. Escribir en localStorage (inmediato — mantiene funcionamiento offline)
   localStorage.setItem('ct_trabajadores', JSON.stringify(arr));
+  // 2. Sincronizar con Supabase en segundo plano (fire & forget)
+  if (_supabase) (async () => {
+    setSyncStatus('syncing');
+    try {
+      if (arr.length > 0) {
+        await _supabase.from('trabajadores').upsert(arr);
+      }
+      // Eliminar trabajadores que ya no existen
+      const { data: existing } = await _supabase.from('trabajadores').select('id');
+      const toDelete = (existing || []).map(r => r.id).filter(id => !arr.find(w => w.id === id));
+      if (toDelete.length > 0) {
+        await _supabase.from('trabajadores').delete().in('id', toDelete);
+      }
+      setSyncStatus('ok');
+    } catch(e) {
+      console.warn('[Supabase] setTrabajadores error:', e);
+      setSyncStatus('error');
+    }
+  })();
 }
 
 function getWorkerById(id) {
@@ -745,7 +857,7 @@ function getWorkerById(id) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// HISTORIAL — localStorage
+// HISTORIAL — localStorage + Supabase (caché local)
 // ═══════════════════════════════════════════════════════════
 function getHistorial() {
   const data = localStorage.getItem('ct_historial');
@@ -753,7 +865,28 @@ function getHistorial() {
 }
 
 function setHistorial(arr) {
+  // 1. Escribir en localStorage (inmediato — mantiene funcionamiento offline)
   localStorage.setItem('ct_historial', JSON.stringify(arr));
+  // 2. Sincronizar con Supabase en segundo plano (fire & forget)
+  if (_supabase) (async () => {
+    setSyncStatus('syncing');
+    try {
+      if (arr.length > 0) {
+        const rows = arr.map(h => ({ id: h.id, data: h }));
+        await _supabase.from('historial').upsert(rows);
+      }
+      // Eliminar liquidaciones que ya no existen
+      const { data: existing } = await _supabase.from('historial').select('id');
+      const toDelete = (existing || []).map(r => r.id).filter(id => !arr.find(h => h.id === id));
+      if (toDelete.length > 0) {
+        await _supabase.from('historial').delete().in('id', toDelete);
+      }
+      setSyncStatus('ok');
+    } catch(e) {
+      console.warn('[Supabase] setHistorial error:', e);
+      setSyncStatus('error');
+    }
+  })();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1459,6 +1592,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   }
+
+  // Inicializar Supabase: carga datos desde la nube y refresca UI
+  initSupabase().then(() => {
+    poblarSelectsTrabajadores();
+    renderTrabajadores();
+  });
 });
 </script>
 </body>
