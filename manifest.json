@@ -1,6 +1,6 @@
 {
-  "name": "Liquidaciones Cleantime",
-  "short_name": "Cleantime",
+  "name": "Liquidaciones",
+  "short_name": "Liquidaciones",
   "description": "Gestión de liquidaciones de sueldo — Cleantime SpA",
   "start_url": "/",
   "display": "standalone",
