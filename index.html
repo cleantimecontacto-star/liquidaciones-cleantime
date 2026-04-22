@@ -778,6 +778,9 @@
       <button class="btn btn-turquesa btn-sm" style="margin-top:4px;" onclick="abrirModalTrabajador(null)">
         ➕ Agregar Trabajador
       </button>
+      <button class="btn btn-sm" style="margin-top:4px; margin-left:6px; background:#6c757d; color:#fff;" onclick="exportarDatosRRHH()">
+        📥 Exportar datos
+      </button>
     </div>
   </div>
 
@@ -969,6 +972,20 @@ const TASAS_PAT = {
 // ═══════════════════════════════════════════════════════════
 // TRABAJADORES — localStorage + Supabase (caché local)
 // ═══════════════════════════════════════════════════════════
+function exportarDatosRRHH() {
+  var data = {
+    trabajadores: JSON.parse(localStorage.getItem('ct_trabajadores') || '[]'),
+    historial: JSON.parse(localStorage.getItem('ct_historial') || '[]')
+  };
+  var blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'cleantime-rrhh-backup.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function getTrabajadores() {
   const data = localStorage.getItem('ct_trabajadores');
   if (data) {
